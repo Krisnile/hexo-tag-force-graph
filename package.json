@@ -1,0 +1,35 @@
+{
+  "name": "hexo-tag-force-graph",
+  "version": "1.0.0",
+  "description": "a hexo tag plugin to insert 3D knowledge graph (articles @ tags)",
+  "keywords": [
+    "hexo",
+    "plugin",
+    "tag",
+    "graph",
+    "3d",
+    "force-graph"
+  ],
+  "homepage": "https://github.com/Krisnile/hexo-tag-force-graph#readme",
+  "bugs": {
+    "url": "https://github.com/Krisnile/hexo-tag-force-graph/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Krisnile/hexo-tag-force-graph.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Krisnile",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/index.test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "^10.0.0"
+  },
+  "peerDependencies": {
+    "hexo": "^4.0.0 || ^5.0.0 || ^6.0.0"
+  }
+}
