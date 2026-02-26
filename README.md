@@ -64,6 +64,7 @@ npm test
 
 ## 常见问题
 
+- **报错「forcegraph 未定义」？** 说明布局里用了 `<%- forcegraph(...) %>`，但当前 Hexo 博客未加载本插件。请在**博客根目录**执行 `npm install hexo-tag-force-graph --save`；若 `_config.yml` 中有 `plugins:` 列表，需加入 `- hexo-tag-force-graph`。
 - **不显示？** 先 `hexo clean && hexo g`，且文章 front matter 需有 `tags`。
 - **自定义渲染？** 用 `<%- JSON.stringify(forcegraph_data()) %>` 取 `{ nodes, links }` 自行渲染。
 - **Hexo 版本？** 支持 4 / 5 / 6（见 `peerDependencies`）。
