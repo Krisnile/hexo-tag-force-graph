@@ -1,4 +1,273 @@
 <%# 复制下面一行到主题 layout 对应页面（如 tag.ejs / index.ejs）的空白处 %>
-<%# 若报错「forcegraph 未定义」：请在博客根目录 npm install hexo-tag-force-graph --save，且 _config.yml 的 plugins 中加入 - hexo-tag-force-graph %>
+<%# 若报错「forcegraph 未定义」：可不改 layout，在 _config.yml 的 forcegraph 下加 inject: true 与 injectTo: ['tag']，由插件自动注入图谱 %>
 <%- forcegraph('500px', '#111') %>
 <%# 可选：<%- forcegraph('600px') %> 或 <%- forcegraph('500px', '#1a1a2e') %> %>
+
+
+<!-- 旧版手动渲染 -->
+<!-- 图谱容器 -->
+<div class="tags-graph-wrapper">
+    <div class="graph-header">
+      <h2 class="graph-title">📊 知识图谱</h2>
+      <p class="graph-legend">
+        <span class="post-dot">●</span> 文章 
+        <span class="tag-dot">●</span> 标签
+      </p>
+    </div>
+    <div id="tags-graph-direct" class="graph-container">
+      <div class="loading-message">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 加载 3D 图谱库 -->
+  <script src="https://unpkg.com/3d-force-graph@1.70.13/dist/3d-force-graph.min.js"></script>
+
+  <!-- 渲染图谱 -->
+  <script>
+  (function() {
+    console.log('🔍 开始渲染知识图谱...');
+    
+    // 获取文章数据
+    const posts = <%- JSON.stringify(site.posts.map(p => ({
+      title: p.title,
+      path: p.path,
+      tags: p.tags ? p.tags.map(t => t.name) : []
+    }))) %>;
+    
+    console.log('📚 文章数量:', posts.length);
+    
+    const container = document.getElementById('tags-graph-direct');
+    if (!container) {
+      console.error('❌ 找不到容器元素');
+      return;
+    }
+    
+    if (!posts || posts.length === 0) {
+      container.innerHTML = '<div class="empty-message">暂无文章数据</div>';
+      return;
+    }
+    
+    // 强制重试机制
+    let retryCount = 0;
+    const maxRetries = 5;
+    
+    function tryRender() {
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      console.log(`📐 尝试 ${retryCount + 1}/${maxRetries} - 容器尺寸:`, width, 'x', height);
+      
+      if (width < 10 || height < 10) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          console.log(`⏳ 容器尺寸过小，${retryCount * 200}ms后重试...`);
+          setTimeout(tryRender, retryCount * 200);
+        } else {
+          container.innerHTML = '<div class="error-message">容器尺寸异常</div>';
+        }
+        return;
+      }
+      
+      // 检查库是否加载
+      if (typeof ForceGraph3D === 'undefined') {
+        console.error('❌ ForceGraph3D 库未加载');
+        container.innerHTML = '<div class="error-message">3D 库加载失败</div>';
+        return;
+      }
+      
+      renderGraph(width, height);
+    }
+    
+    function renderGraph(width, height) {
+      console.log('🎨 开始构建图谱数据...');
+      
+      // 构建图谱数据
+      const nodes = [];
+      const links = [];
+      const nodeMap = new Map();
+      
+      posts.forEach((post, idx) => {
+        // 文章节点
+        const postId = 'p' + idx;
+        nodeMap.set(postId, true);
+        nodes.push({
+          id: postId,
+          name: post.title || '无标题',
+          type: 'post',
+          url: post.path,
+          val: 1
+        });
+        
+        if (post.tags && post.tags.length) {
+          // 标签节点
+          post.tags.forEach(tag => {
+            const tagId = 't' + tag;
+            if (!nodeMap.has(tagId)) {
+              nodeMap.set(tagId, true);
+              nodes.push({
+                id: tagId,
+                name: tag,
+                type: 'tag',
+                url: '/tags/' + encodeURIComponent(tag) + '/',
+                val: 1.5
+              });
+            }
+            // 文章-标签连接
+            links.push({ source: postId, target: tagId });
+          });
+          
+          // 同一篇文章的标签互相连接
+          for (let i = 0; i < post.tags.length; i++) {
+            for (let j = i + 1; j < post.tags.length; j++) {
+              links.push({
+                source: 't' + post.tags[i],
+                target: 't' + post.tags[j]
+              });
+            }
+          }
+        }
+      });
+      
+      console.log('📊 节点数:', nodes.length, '连接数:', links.length);
+      
+      if (nodes.length === 0) {
+        container.innerHTML = '<div class="empty-message">无节点数据</div>';
+        return;
+      }
+      
+      try {
+        // 清除容器内容
+        container.innerHTML = '';
+        
+        // 创建容器
+        const Graph = ForceGraph3D()(container)
+          .graphData({ nodes, links })
+          .nodeLabel(n => n.name)
+          .nodeColor(n => n.type === 'post' ? '#ff7f0e' : '#1f77b4')
+          .nodeVal(n => n.type === 'post' ? 4 : 2.5)
+          .linkColor(() => 'rgba(255,255,255,0.15)')
+          .linkWidth(0.5)
+          .onNodeClick(n => window.location.href = n.url)
+          .backgroundColor('#111')
+          .enableNodeDrag(true)
+          .enableNavigationControls(true)
+          .width(width)
+          .height(height);
+        
+        // 自动旋转
+        if (Graph.controls) {
+          Graph.controls().autoRotate = true;
+          Graph.controls().autoRotateSpeed = 0.5;
+        }
+        
+        console.log('✅ 图谱渲染成功！');
+        
+        // 添加窗口大小变化监听
+        window.addEventListener('resize', function() {
+          const newWidth = container.clientWidth;
+          const newHeight = container.clientHeight;
+          if (newWidth > 0 && newHeight > 0) {
+            Graph.width(newWidth).height(newHeight);
+          }
+        });
+        
+      } catch (e) {
+        console.error('❌ 渲染失败:', e);
+        container.innerHTML = '<div class="error-message">渲染失败</div>';
+      }
+    }
+    
+    // 开始渲染
+    if (document.readyState === 'complete') {
+      tryRender();
+    } else {
+      window.addEventListener('load', tryRender);
+    }
+  })();
+  </script>
+
+  <style>
+  .tags-graph-wrapper {
+    margin-top: 1.5rem;
+    padding: 0.8rem;
+    background: var(--card-bg-color, #ffffff);
+    border-radius: 10px;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.02);
+  }
+  
+  .graph-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  
+  .graph-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+  
+  .graph-legend {
+    margin: 0;
+    color: #999;
+    font-size: 0.7rem;
+  }
+  
+  .post-dot {
+    color: #ff7f0e;
+    margin-right: 2px;
+  }
+  
+  .tag-dot {
+    color: #1f77b4;
+    margin-left: 6px;
+    margin-right: 2px;
+  }
+  
+  .graph-container {
+    width: 100%;
+    height: 250px;
+    background: #111;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .loading-message, .empty-message, .error-message {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 0.9rem;
+    background: #111;
+    border-radius: 6px;
+  }
+  
+  .error-message {
+    color: #ff6b6b;
+  }
+  
+  /* 暗色模式适配 */
+  [data-theme='dark'] .tags-graph-wrapper {
+    background: #1a1a1a;
+  }
+  
+  /* 移动端适配 */
+  @media (max-width: 768px) {
+    .graph-container {
+      height: 180px;
+    }
+    .graph-title {
+      font-size: 0.9rem;
+    }
+  }
+  </style>
+  
+<% } else { %>
+  <p style="text-align:center; padding:2rem;">暂无标签</p>

@@ -70,9 +70,16 @@ function generateGraphData(hexo) {
 /** 从 _config.yml 的 forcegraph 段读取配置，未写则用默认值 */
 function getConfig(hexo) {
   const cfg = (hexo && hexo.config && hexo.config.forcegraph) || {};
+  // inject 配置：是否启用自动注入
+  const inject = cfg.inject === true || cfg.inject === 'true';
+  // injectTo 可以是一个布局字符串或数组，如 'tag' 或 ['tag', 'post']
+  let injectTo = cfg.injectTo != null ? cfg.injectTo : [];
+  if (!Array.isArray(injectTo)) injectTo = injectTo ? [injectTo] : [];
   return {
     height: (cfg.height && String(cfg.height).trim()) || '500px',
-    backgroundColor: (cfg.backgroundColor && String(cfg.backgroundColor).trim()) || (cfg.bgColor && String(cfg.bgColor).trim()) || '#111'
+    backgroundColor: (cfg.backgroundColor && String(cfg.backgroundColor).trim()) || (cfg.bgColor && String(cfg.bgColor).trim()) || '#111',
+    inject,
+    injectTo
   };
 }
 
@@ -92,6 +99,10 @@ function buildGraphHTML(graphData, height, bgColor, id) {
 (function() {
   var container = document.getElementById('${id}');
   if (!container) return;
+  if (typeof ForceGraph3D === 'undefined') {
+    container.innerHTML = '<p style="color:#999;text-align:center;">3D 图谱脚本加载失败，请检查网络或稍后重试</p>';
+    return;
+  }
   var graphData = ${JSON.stringify(graphData)};
   try {
     var Graph = ForceGraph3D()(container)
@@ -119,6 +130,7 @@ function buildGraphHTML(graphData, height, bgColor, id) {
 function register(hexo) {
   if (!hexo || !hexo.extend) return;
 
+  // 注册标签：{% forcegraph %}
   hexo.extend.tag.register('forcegraph', function (args) {
     const cfg = getConfig(this);
     const height = (args[0] && String(args[0]).trim()) || cfg.height;
@@ -131,6 +143,7 @@ function register(hexo) {
     return buildGraphHTML(graphData, height, bgColor, id);
   }, { ends: false });
 
+  // 注册 Helper：<%- forcegraph() %>
   hexo.extend.helper.register('forcegraph', function (height, bgColor) {
     const cfg = getConfig(this);
     height = (height && String(height).trim()) || cfg.height;
@@ -143,15 +156,60 @@ function register(hexo) {
     return buildGraphHTML(graphData, height, bgColor, id);
   });
 
+  // 注册 Helper：获取原始数据 <%- forcegraph_data() %>
   hexo.extend.helper.register('forcegraph_data', function () {
     return generateGraphData(this);
   });
+
+  // ========== 通过 Injector 自动注入图谱（核心改进） ==========
+  if (hexo.extend.injector) {
+    const cfg = getConfig(hexo);
+    // 只有当 inject 为 true 且指定了 injectTo 时才启用自动注入
+    if (cfg.inject && cfg.injectTo && cfg.injectTo.length > 0) {
+      // 生成注入内容（复用 buildGraphHTML）
+      const injectFn = function () {
+        const c = getConfig(hexo);
+        const graphData = generateGraphData(hexo);
+        // 无数据时返回空（或可返回提示，但为避免空占位，建议返回空字符串）
+        if (!graphData.nodes || graphData.nodes.length === 0) {
+          return ''; // 或者返回 '<!-- no graph data -->'
+        }
+        const id = 'fg-inject-' + Date.now() + '-' + Math.random().toString(36).substr(2, 8);
+        // 为了视觉效果更好，在外面包一层容器
+        return `<div class="hexo-force-graph-wrapper" style="margin: 2rem auto; max-width: 800px; padding: 0 1rem;">
+  <h3 style="margin-bottom: 0.5rem; font-size: 1.2rem;">📊 知识图谱</h3>
+  ${buildGraphHTML(graphData, c.height, c.backgroundColor, id)}
+</div>`;
+      };
+
+      // 为每个指定的布局注册 injector
+      cfg.injectTo.forEach(function (to) {
+        const layout = String(to).trim();
+        if (layout) {
+          // 注册到 body 结束前
+          hexo.extend.injector.register('body_end', injectFn, layout);
+          hexo.log.debug(`[forcegraph] 已为布局 "${layout}" 注册自动注入`);
+        }
+      });
+      hexo.log.info(`[forcegraph] 自动注入已启用，目标布局: ${cfg.injectTo.join(', ')}`);
+    }
+  } else {
+    hexo.log.warn('[forcegraph] 当前 Hexo 版本不支持 injector，自动注入功能不可用');
+  }
 }
 
-// 标准入口：Hexo 会 require 后执行 module(hexo)，从而注册 helper
+// 标准入口：Hexo 的 loadPlugin 会读取本文件并用 (exports, require, module, __filename, __dirname, hexo) 包装执行，
+// 不会调用导出的函数，因此需在脚本执行时若 hexo 已注入则立即注册
 module.exports = function (hexo) {
   register(hexo);
 };
+// Hexo 的 loadPlugin 执行本文件时 hexo 作为包装函数的第 6 个参数在作用域内，在此直接注册。
+// 仅当具备完整 Hexo 实例特征（extend + log）时才调用，避免在测试或普通 require 时误用不完整 mock
+if (typeof hexo !== 'undefined' && hexo && hexo.extend && hexo.extend.tag && hexo.extend.helper && hexo.log) {
+  register(hexo);
+}
+
+// 导出核心函数，便于其他脚本复用
 module.exports.generateGraphData = generateGraphData;
 module.exports.buildGraphHTML = buildGraphHTML;
 module.exports.getConfig = getConfig;

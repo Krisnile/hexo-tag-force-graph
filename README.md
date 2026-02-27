@@ -24,6 +24,9 @@ plugins:
 forcegraph:
   height: '500px'        # 图谱容器高度
   backgroundColor: '#111' # 背景色
+  # 若在 layout 中写 <%- forcegraph() %> 报错「forcegraph 未定义」，可改用注入方式（无需改 layout）：
+  inject: true           # 是否自动注入图谱
+  injectTo: ['default']  # 注入到哪些页：default=全部，或 tag/index/post 等（与主题 layout 名一致）
 ```
 
 模板里不传参数时会使用上述配置；传参则优先用模板参数。
@@ -45,6 +48,8 @@ forcegraph:
 <%- forcegraph('600px', '#111') %>
 ```
 
+**若报错「forcegraph 未定义」**：可不改 layout，在 `_config.yml` 中配置 `forcegraph.inject: true` 和 `forcegraph.injectTo: ['tag']`（或 `['tag','index']`），插件会在对应页面自动注入图谱。
+
 参数：第 1 个为高度、第 2 个为背景色；不传则用 `_config.yml` 的 `forcegraph` 配置或默认值。
 
 ## 图谱说明
@@ -64,8 +69,8 @@ npm test
 
 ## 常见问题
 
-- **报错「forcegraph 未定义」？** 说明布局里用了 `<%- forcegraph(...) %>`，但当前 Hexo 博客未加载本插件。请在**博客根目录**执行 `npm install hexo-tag-force-graph --save`；若 `_config.yml` 中有 `plugins:` 列表，需加入 `- hexo-tag-force-graph`。
-- **不显示？** 先 `hexo clean && hexo g`，且文章 front matter 需有 `tags`。
+- **报错「forcegraph 未定义」？** 两种做法：（1）在**博客根目录**执行 `npm install hexo-tag-force-graph --save`，且若 `_config.yml` 有 `plugins:` 需加入 `- hexo-tag-force-graph`；（2）或**不改 layout**，在 `_config.yml` 的 `forcegraph` 下设置 `inject: true` 和 `injectTo: ['tag']`（或 `['tag','index']`），由插件自动注入图谱。
+- **不显示？** 按顺序排查：（1）用注入方式时，先试 `injectTo: ['default']` 看是否在任意页出现；（2）执行 `hexo clean && hexo g`；（3）确认文章 front matter 里有 `tags`，且至少有一篇已发布；（4）打开浏览器控制台看是否有报错或 CDN 加载失败。
 - **自定义渲染？** 用 `<%- JSON.stringify(forcegraph_data()) %>` 取 `{ nodes, links }` 自行渲染。
 - **Hexo 版本？** 支持 4 / 5 / 6（见 `peerDependencies`）。
 
