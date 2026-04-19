@@ -7,9 +7,6 @@
 
 'use strict';
 
-const path = require('path');
-const fs = require('fs');
-
 /**
  * 根据站点文章与标签生成力导向图所需的数据（节点 + 边）
  * - 边1：文章 → 标签（文章与所属标签相连）
