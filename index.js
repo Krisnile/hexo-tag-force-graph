@@ -7,6 +7,9 @@
 
 'use strict';
 
+const path = require('path');
+const fs = require('fs');
+
 /**
  * 根据站点文章与标签生成力导向图所需的数据（节点 + 边）
  * - 边1：文章 → 标签（文章与所属标签相连）
@@ -275,6 +278,25 @@ function register(hexo) {
     return generateGraphData(this);
   });
 
+  // Stellar 等主题右侧栏：<%- tag_force_graph({ item: item }) %>
+  try {
+    const ejs = require('ejs');
+    hexo.extend.helper.register('tag_force_graph', function (options) {
+      options = options || {};
+      const tpl = path.join(__dirname, 'templates', 'tag_graph.ejs');
+      const str = fs.readFileSync(tpl, 'utf8');
+      const locals = Object.assign({}, this, {
+        item: options.item || { layout: 'tag_graph', title: '标签图谱' },
+      });
+      const fn = ejs.compile(str, { filename: tpl });
+      return fn(locals);
+    });
+  } catch (err) {
+    if (err && String(err.message).indexOf('already registered') === -1) {
+      throw err;
+    }
+  }
+
   // ========== 通过 Injector 自动注入图谱 ==========
   // 重要：Hexo 的 injector.register() 会立即执行传入的函数并缓存结果。插件在 load_plugins 阶段运行，
   // 此时 load_database 尚未执行，hexo.locals.get('posts') 为空。必须延迟到 ready 后再注册，
@@ -330,3 +352,5 @@ if (typeof hexo !== 'undefined' && hexo && hexo.extend && hexo.extend.tag && hex
 module.exports.generateGraphData = generateGraphData;
 module.exports.buildGraphHTML = buildGraphHTML;
 module.exports.getConfig = getConfig;
+module.exports.stylusPath = path.join(__dirname, 'assets', 'tag-graph.styl');
+module.exports.templatesDir = path.join(__dirname, 'templates');

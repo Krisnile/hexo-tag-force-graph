@@ -1,0 +1,10 @@
+# --- 合并进站点根目录 _config.yml（与 theme、deploy 等同级）---
+#
+# 侧栏「标签共现」小图会读取 forcegraph 中的 injectTo / maxNodes 等；
+# 与插件内「文章-标签」大图 / injector 共用同一段配置名，可按需增减字段。
+
+forcegraph:
+  inject: true
+  injectTo: ['tags']
+  maxNodes: 48
+  minCooccurrence: 1

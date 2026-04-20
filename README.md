@@ -24,6 +24,8 @@ Hexo 插件：在博客中插入「文章-标签」3D/2D 知识图谱（同一�
 npm install hexo-tag-force-graph --save
 ```
 
+**主题侧需要粘贴的配置与示例文件** 已全部放在 npm 包内目录 **`examples/stellar/`**（安装后路径：`node_modules/hexo-tag-force-graph/examples/stellar/`），含可复制的 `tag_graph.ejs`、YAML / Stylus 片段与说明；根目录 **README** 与包内示例互为补充，发布 npm 后用户无需再查其它仓库。
+
 若站点 `_config.yml` 中有 `plugins:` 列表，请加入本插件：
 
 ```yaml
@@ -79,7 +81,38 @@ forcegraph:
 
 参数：第 1 个为高度、第 2 个为背景色；不传则使用上面配置或默认值。
 
-### 3. 独立「知识图谱」页 + 侧边栏入口（如 Stellar）
+### 3. Stellar 侧栏：标签共现图谱（`tag_force_graph`）
+
+与上文「文章–标签大图」不同，这是 **标签与标签共现** 的小图，适合挂在右侧栏。
+
+**插件里自带的是什么？**
+
+- **在 npm 包内**：`templates/tag_graph.ejs`、`templates/tag_graph_canvas.ejs`、`assets/tag-graph.styl`，以及注册好的 helper **`tag_force_graph`**（由 `index.js` 在加载时注册）。  
+- **不在 npm 包内、也不会 `npm install` 时自动写入主题的**：`themes/stellar/layout/_partial/widgets/tag_graph.ejs`。
+
+**为什么主题里还要有一个 `tag_graph.ejs`？**
+
+Stellar 的 `widgets.yml` 里配置的 `layout: tag_graph` 表示：去 **`themes/<主题>/layout/_partial/widgets/tag_graph.ejs`** 找同名 partial。Hexo/Stellar **只会从主题目录解析这个路径**，不会自动到 `node_modules/hexo-tag-force-graph/` 里找同名文件，所以无法做到「只装包、零主题文件」而又沿用这套 widget 机制。
+
+主题里的文件 **只需一行**，作用是把渲染交给插件模板，相当于固定「钩子」：
+
+```ejs
+<%- tag_force_graph({ item: item }) %>
+```
+
+对用户而言仍是 **「装包 + 写站点/主题配置」**：在主题里 **新建上述一个文件、粘贴一行** 即可，**不需要**把图谱的 HTML/JS 抄进主题；业务代码全部在插件包内。
+
+**最小步骤汇总（Stellar）**
+
+1. `npm install hexo-tag-force-graph --save`  
+2. 打开包内 **`examples/stellar/`**，按其中 **`README.md`** 与各 `*.snippet` 文件操作（可复制 `tag_graph.ejs`、合并 YAML / Stylus）。站点 `forcegraph` 默认值见 **`examples/stellar/forcegraph.site.yml.snippet`**。  
+3. 将 **`examples/stellar/tag_graph.ejs`** 复制到 **`themes/stellar/layout/_partial/widgets/tag_graph.ejs`**（或新建该文件，内容与示例一致，仅一行 helper）。  
+4. 将 **`widgets.yml.snippet`** 合并进 **`themes/stellar/_data/widgets.yml`**；按 **`site_tree.yml.snippet`** 说明合并 **`site_tree`**。  
+5. 将 **`stylus-import.snippet.styl`** 中的 `@import` 合并进主题 stylus 覆盖文件（相对路径按主题文件深度调整，示例以 `_custom-override.styl` 为参照）。
+
+侧栏显示条件由包内 **`templates/tag_graph.ejs`** 与站点 **`forcegraph.injectTo`** 等共同决定，无需在主题中维护图谱业务代码。
+
+### 4. 独立「知识图谱」页 + 侧边栏入口（如 Stellar）
 
 1. 新建页面，例如 `source/graph/index.md`：
 
@@ -92,7 +125,7 @@ layout: page
 {% forcegraph 600px %}
 ```
 
-2. 在 Stellar 的 `source/_data/widgets.yml` 中增加 linklist 组件指向该页，并在 `_config.stellar.yml` 的 `site_tree` 中在对应页的 `leftbar`/`rightbar` 中加入该组件（详见 [Stellar 侧边栏组件文档](https://xaoxuu.com/wiki/stellar/widgets/)）。
+2. 在 Stellar 的 `source/_data/widgets.yml` 中增加 linklist 组件指向该页，并在主题 `_config.yml` 的 `site_tree` 中在对应页的 `leftbar`/`rightbar` 中加入该组件（详见 [Stellar 侧边栏组件文档](https://xaoxuu.com/wiki/stellar/widgets/)）。
 
 ---
 

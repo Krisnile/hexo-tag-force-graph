@@ -1,0 +1,50 @@
+// hexo-tag-force-graph：右侧栏标签共现图谱样式（需在主题的 stylus 中 @import）
+
+.l_right .widgets .widget-wrapper.tag-graph
+  position: sticky
+  position: -webkit-sticky
+  top: 8px
+  padding: 16px 0
+  margin-top: 0
+  z-index: 2
+  &:first-child
+    top: 8px
+    padding-top: 8px
+
+.widget-wrapper.tag-graph .widget-header .name
+  font-weight: 600
+  letter-spacing: -0.02em
+
+.widget-wrapper.tag-graph .tag-graph-body
+  padding: 0
+  margin: 0 -2px
+
+.tag-knowledge-graph
+  width: 100%
+  height: 260px
+  min-height: 220px
+  border-radius: 10px
+  background: var(--block)
+  overflow: hidden
+  cursor: grab
+  &:active
+    cursor: grabbing
+
+:root[data-theme="light"] .tag-knowledge-graph
+  background: var(--card)
+  border: 1px solid var(--block-border)
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07)
+
+@media (prefers-color-scheme: light)
+  :root:not([data-theme]) .tag-knowledge-graph
+    background: var(--card)
+    border: 1px solid var(--block-border)
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07)
+
+.tag-knowledge-graph.tag-graph-fallback
+  display: flex
+  align-items: center
+  justify-content: center
+  font-size: 12px
+  color: var(--text-p4)
+  min-height: 120px

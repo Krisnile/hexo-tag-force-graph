@@ -1,0 +1,207 @@
+<% const graphPayload = { nodes: tagNodes, links: linkList }; %>
+<div id="tag-knowledge-graph" class="tag-knowledge-graph" role="img" aria-label="标签共现知识图谱，节点可拖拽，点击跳转标签页"></div>
+<script type="application/json" id="tag-graph-json"><%- JSON.stringify(graphPayload).replace(/</g, '\\u003c') %></script>
+<script>
+(function () {
+  var mount = document.getElementById('tag-knowledge-graph');
+  var dataEl = document.getElementById('tag-graph-json');
+  if (!mount || !dataEl) return;
+  var raw;
+  try {
+    raw = JSON.parse(dataEl.textContent || '{}');
+  } catch (e) { return; }
+  if (!raw.nodes || !raw.nodes.length) return;
+
+  var degree = {};
+  var i, l, sid, tid;
+  for (i = 0; i < raw.nodes.length; i++) {
+    degree[raw.nodes[i].id] = 0;
+  }
+  for (i = 0; i < raw.links.length; i++) {
+    l = raw.links[i];
+    sid = l.source;
+    tid = l.target;
+    if (typeof sid === 'object' && sid) sid = sid.id;
+    if (typeof tid === 'object' && tid) tid = tid.id;
+    if (degree[sid] != null) degree[sid]++;
+    if (degree[tid] != null) degree[tid]++;
+  }
+
+  function loadScript(src, cb) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = cb;
+    s.onerror = function () { mount.classList.add('tag-graph-fallback'); };
+    document.head.appendChild(s);
+  }
+
+  function cssVar(name, fb) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fb;
+  }
+  function hexToRgb(hex) {
+    var m = (hex || '').replace('#', '');
+    if (m.length === 3) m = m[0] + m[0] + m[1] + m[1] + m[2] + m[2];
+    if (m.length !== 6) return null;
+    return {
+      r: parseInt(m.slice(0, 2), 16),
+      g: parseInt(m.slice(2, 4), 16),
+      b: parseInt(m.slice(4, 6), 16),
+    };
+  }
+  /** 将任意 CSS 颜色（hex / rgb / hsl）解析为 RGB，供 canvas 使用；Stellar 等为 --theme-link:hsl(...) */
+  function parseCssColorToRgb(str) {
+    str = (str || '').trim();
+    if (!str) return { r: 33, g: 150, b: 243 };
+    var fromHex = hexToRgb(str);
+    if (fromHex) return fromHex;
+    var m = str.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+    if (m) {
+      return { r: +m[1] | 0, g: +m[2] | 0, b: +m[3] | 0 };
+    }
+    var probe = document.createElement('span');
+    probe.setAttribute('style', 'position:absolute;left:-9999px;color:' + str + ';');
+    document.body.appendChild(probe);
+    var cs = getComputedStyle(probe).color;
+    document.body.removeChild(probe);
+    m = cs && cs.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+    if (m) return { r: +m[1] | 0, g: +m[2] | 0, b: +m[3] | 0 };
+    return { r: 33, g: 150, b: 243 };
+  }
+  function isDarkUi() {
+    var t = document.documentElement.getAttribute('data-theme');
+    if (t === 'dark') return true;
+    if (t === 'light') return false;
+    return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  /** 主题强调色：Stellar 用 --theme-link；兼容 --color-theme */
+  function themeRgb() {
+    var raw =
+      cssVar('--theme-link', '') ||
+      cssVar('--color-theme', '') ||
+      cssVar('--swiper-theme-color', '') ||
+      '#2196f3';
+    return parseCssColorToRgb(raw);
+  }
+  function hashHue(str) {
+    var h = 0;
+    var s = String(str);
+    for (var i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return Math.abs(h) % 360;
+  }
+
+  function init() {
+    if (typeof ForceGraph === 'undefined') return;
+    var highlightId = null;
+    var fitPad = 12;
+    var uiDark = isDarkUi();
+    var base = themeRgb();
+    var baseHue = (function () {
+      var r = base.r / 255;
+      var g = base.g / 255;
+      var b = base.b / 255;
+      var max = Math.max(r, g, b);
+      var min = Math.min(r, g, b);
+      var d = max - min;
+      if (d < 1e-6) return 210;
+      var h = 0;
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+      return (h * 360) | 0;
+    })();
+    var fg = ForceGraph()(mount)
+      .backgroundColor('rgba(0,0,0,0)')
+      .width(mount.clientWidth)
+      .height(mount.clientHeight)
+      .graphData(raw)
+      .nodeId('id')
+      .nodeLabel('name')
+      .nodeVal('val')
+      .nodeColor(function (node) {
+        if (node.id === highlightId) {
+          var h = themeRgb();
+          return 'rgb(' + h.r + ',' + h.g + ',' + h.b + ')';
+        }
+        var hue = (baseHue + hashHue(node.id) * 17) % 360;
+        return uiDark
+          ? 'hsl(' + hue + ',62%,72%)'
+          : 'hsl(' + hue + ',55%,42%)';
+      })
+      .linkColor(function () {
+        var rgb = themeRgb();
+        return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.28)';
+      })
+      .linkWidth(function (link) {
+        var w = link.value || 1;
+        return Math.sqrt(w) * 0.35 + 0.35;
+      })
+      .linkDirectionalParticles(2)
+      .linkDirectionalParticleSpeed(0.006)
+      .linkDirectionalParticleWidth(2.5)
+      .linkDirectionalParticleColor(function () {
+        var rgb = themeRgb();
+        return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.75)';
+      })
+      .cooldownTicks(240)
+      .onNodeHover(function (node) {
+        highlightId = node ? node.id : null;
+        try {
+          fg.refresh();
+        } catch (e) {}
+      })
+      .onEngineStop(function () {
+        if (typeof fg.zoomToFit === 'function') {
+          fg.zoomToFit(320, fitPad);
+        }
+      })
+      .onNodeClick(function (node) {
+        if (node.link) window.location.href = node.link;
+      });
+
+    var resizeFitTimer;
+    var ro = new ResizeObserver(function () {
+      fg.width(mount.clientWidth).height(mount.clientHeight);
+      clearTimeout(resizeFitTimer);
+      resizeFitTimer = setTimeout(function () {
+        if (typeof fg.zoomToFit === 'function') {
+          fg.zoomToFit(0, fitPad);
+        }
+      }, 80);
+    });
+    ro.observe(mount);
+
+    var themeMo = new MutationObserver(function () {
+      try {
+        fg.refresh();
+      } catch (e) {}
+    });
+    themeMo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+    if (fg.d3Force) {
+      try {
+        fg.d3Force('charge').strength(function (node) {
+          var d = degree[node.id] || 1;
+          return -20 - Math.min(88, Math.sqrt(d) * 7.2);
+        });
+        fg.d3Force('link').distance(function (link) {
+          var s = link.source;
+          var t = link.target;
+          if (typeof s === 'object' && s) s = s.id;
+          if (typeof t === 'object' && t) t = t.id;
+          var ds = degree[s] || 1;
+          var dt = degree[t] || 1;
+          var w = link.value || 1;
+          return 12 + Math.sqrt(w) * 4.5 + Math.min((ds + dt) * 0.42, 16);
+        });
+        if (typeof fg.d3AlphaDecay === 'function') {
+          fg.d3AlphaDecay(0.018);
+        }
+      } catch (e) {}
+    }
+  }
+
+  loadScript('https://cdn.jsdelivr.net/npm/force-graph@1.43.5/dist/force-graph.min.js', init);
+})();
+</script>

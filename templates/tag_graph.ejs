@@ -1,0 +1,81 @@
+<%
+const fgCfg = Object.assign({
+  inject: true,
+  maxNodes: 48,
+  minCooccurrence: 1,
+  /* 默认仅标签列表页（Stellar: page.layout === 'tags'）；可在站点 _config.yml 的 forcegraph.injectTo 中扩展 */
+  injectTo: ['tags'],
+}, config.forcegraph || {});
+
+const injectTo = fgCfg.injectTo;
+let showTagGraph = fgCfg.inject !== false && site.tags && site.tags.length >= 2;
+
+if (showTagGraph) {
+  showTagGraph =
+    (injectTo.indexOf('home') >= 0 && is_home()) ||
+    (injectTo.indexOf('categories') >= 0 && page.layout === 'categories') ||
+    (injectTo.indexOf('tags') >= 0 && page.layout === 'tags') ||
+    (injectTo.indexOf('archives') >= 0 && is_archive() && !page.author);
+}
+
+var tagNodes = [];
+var linkList = [];
+var tagNameSet = {};
+
+if (showTagGraph) {
+  site.tags.sort('length', -1).each(function (tag) {
+    if (tagNodes.length >= fgCfg.maxNodes) return;
+    var id = tag.name;
+    tagNodes.push({
+      id: id,
+      name: id,
+      val: Math.max(1, tag.posts.length),
+      link: url_for(tag.path),
+    });
+    tagNameSet[id] = true;
+  });
+
+  var edgeMap = {};
+  site.posts.each(function (post) {
+    var names = [];
+    post.tags.each(function (t) {
+      names.push(t.name);
+    });
+    names.sort();
+    for (var i = 0; i < names.length; i++) {
+      for (var j = i + 1; j < names.length; j++) {
+        var a = names[i];
+        var b = names[j];
+        var key = a < b ? a + '|||' + b : b + '|||' + a;
+        edgeMap[key] = (edgeMap[key] || 0) + 1;
+      }
+    }
+  });
+
+  for (var ek in edgeMap) {
+    var parts = ek.split('|||');
+    var s = parts[0];
+    var t = parts[1];
+    var w = edgeMap[ek];
+    if (tagNameSet[s] && tagNameSet[t] && w >= fgCfg.minCooccurrence) {
+      linkList.push({ source: s, target: t, value: w });
+    }
+  }
+
+  if (tagNodes.length < 2) {
+    showTagGraph = false;
+  }
+}
+%>
+<% if (showTagGraph) { %>
+<widget class="widget-wrapper<%- scrollreveal(' ') %> tag-graph">
+<% if (item.title) { %>
+  <div class="widget-header dis-select">
+    <span class="name"><%- item.title %></span>
+  </div>
+<% } %>
+  <div class="widget-body tag-graph-body">
+  <%- include('tag_graph_canvas.ejs', { tagNodes: tagNodes, linkList: linkList }) %>
+  </div>
+</widget>
+<% } %>
