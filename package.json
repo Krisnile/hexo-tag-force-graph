@@ -1,6 +1,6 @@
 {
   "name": "hexo-tag-force-graph",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "a hexo tag plugin to insert 3D knowledge graph (articles @ tags)",
   "keywords": [
     "hexo",

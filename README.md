@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/hexo-tag-force-graph)](https://www.npmjs.com/package/hexo-tag-force-graph)
 [![license](https://img.shields.io/npm/l/hexo-tag-force-graph)](https://github.com/Krisnile/hexo-tag-force-graph/blob/master/LICENSE)
 
-Hexo 插件：在博客中插入「文章-标签」3D/2D 知识图谱（同一篇文章里的标签会两两相连），支持拖拽节点、旋转/缩放。即装即用。
+Hexo 插件：在博客中插入「文章-标签」的知识图谱卡片，支持拖拽节点、旋转/缩放。
 
 ---
 
@@ -14,7 +14,7 @@ Hexo 插件：在博客中插入「文章-标签」3D/2D 知识图谱（同一�
 - **三种使用方式**：
   1. **标签**：在 Markdown 中写 `{% forcegraph %}`，由插件在生成时替换为图谱 HTML。
   2. **Helper**：在主题 layout 中写 `<%- forcegraph() %>`，在指定页面插入图谱。
-  3. **自动注入**：在 `_config.yml` 中开启 `inject` 并配置 `injectTo`，插件在 `generateBefore` 阶段为指定 layout 注册 injector，无需改主题模板即可在标签页、归档页等显示图谱；当仅注入到标签+归档且 `injectPosition: right` 时，以右侧固定 2D 小图形式展示（适配 Stellar 等主题）。
+  3. **自动注入**：在 `_config.yml` 中开启 `inject` 并配置 `injectTo`，插件在 `generateBefore` 阶段为指定 layout 注册 injector，无需改主题模板即可在标签页、归档页等显示图谱；当仅注入到标签+归档且 `injectPosition: right` 时，以右侧固定 2D 小图形式展示（因为我用的是 Stellar 主题，所以只测试了这个主题的适配）。
 
 ---
 
@@ -35,7 +35,7 @@ plugins:
 
 ---
 
-## 用法（用户使用流程）
+## 使用流程
 
 ### 1. 配置（可选）
 
@@ -51,15 +51,15 @@ forcegraph:
   injectTo: ['tag', 'archive']   # 与主题 layout 名一致，如 tag/tags、archive/archives、default 等
   injectPosition: 'right'       # 可选。仅当 injectTo 为 tag+archive 时默认 right（右侧固定小图）
   injectRightHeight: '280px'     # 右侧图谱高度
-  injectBottom: '370px'          # 右侧图谱距底距离（可与看板娘等错开）
+  injectBottom: '370px'          # 右侧图谱距底距离
 ```
 
-- **与 Stellar 等主题配合**：  
+- **与 Stellar 主题配合**：  
   - 仅在**标签页、归档页**右侧显示小图：`injectTo: ['tag', 'archive']`，并保留或显式设置 `injectPosition: 'right'`；图谱会使用主题背景（如 `--body-bg`）。  
   - 在**全站底部**显示：`injectTo: ['default']`，不设或留空 `injectPosition`。  
 - 模板中不传参数时使用上述配置；传参则优先用模板参数。
 
-### 2. 三种使用方式
+### 2. 使用方式
 
 **方式 A：Markdown 中**（任意文章/页面）
 
@@ -94,25 +94,13 @@ forcegraph:
 
 Stellar 的 `widgets.yml` 里配置的 `layout: tag_graph` 表示：去 **`themes/<主题>/layout/_partial/widgets/tag_graph.ejs`** 找同名 partial。Hexo/Stellar **只会从主题目录解析这个路径**，不会自动到 `node_modules/hexo-tag-force-graph/` 里找同名文件，所以无法做到「只装包、零主题文件」而又沿用这套 widget 机制。
 
-主题里的文件 **只需一行**，作用是把渲染交给插件模板，相当于固定「钩子」：
+这个文件**只需一行**，作用是把渲染交给插件模板，相当于固定钩子：
 
 ```ejs
 <%- tag_force_graph({ item: item }) %>
 ```
 
-对用户而言仍是 **「装包 + 写站点/主题配置」**：在主题里 **新建上述一个文件、粘贴一行** 即可，**不需要**把图谱的 HTML/JS 抄进主题；业务代码全部在插件包内。
-
-**最小步骤汇总（Stellar）**
-
-1. `npm install hexo-tag-force-graph --save`  
-2. 打开包内 **`examples/stellar/`**，按其中 **`README.md`** 与各 `*.snippet` 文件操作（可复制 `tag_graph.ejs`、合并 YAML / Stylus）。站点 `forcegraph` 默认值见 **`examples/stellar/forcegraph.site.yml.snippet`**。  
-3. 将 **`examples/stellar/tag_graph.ejs`** 复制到 **`themes/stellar/layout/_partial/widgets/tag_graph.ejs`**（或新建该文件，内容与示例一致，仅一行 helper）。  
-4. 将 **`widgets.yml.snippet`** 合并进 **`themes/stellar/_data/widgets.yml`**；按 **`site_tree.yml.snippet`** 说明合并 **`site_tree`**。  
-5. 将 **`stylus-import.snippet.styl`** 中的 `@import` 合并进主题 stylus 覆盖文件（相对路径按主题文件深度调整，示例以 `_custom-override.styl` 为参照）。
-
-侧栏显示条件由包内 **`templates/tag_graph.ejs`** 与站点 **`forcegraph.injectTo`** 等共同决定，无需在主题中维护图谱业务代码。
-
-### 4. 独立「知识图谱」页 + 侧边栏入口（如 Stellar）
+### 4. 独立「知识图谱」页 + 侧边栏入口
 
 1. 新建页面，例如 `source/graph/index.md`：
 
