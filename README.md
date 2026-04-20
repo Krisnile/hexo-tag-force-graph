@@ -1,7 +1,7 @@
 # hexo-tag-force-graph
 
 [![npm version](https://img.shields.io/npm/v/hexo-tag-force-graph)](https://www.npmjs.com/package/hexo-tag-force-graph)
-[![license](https://img.shields.io/npm/l/hexo-tag-force-graph)](https://github.com/Krisnile/hexo-tag-force-graph/blob/master/LICENSE)
+[![license](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/Krisnile/hexo-tag-force-graph/blob/master/LICENSE)
 
 Hexo 插件：在博客中插入「文章-标签」的知识图谱卡片，支持拖拽节点、旋转/缩放。
 
