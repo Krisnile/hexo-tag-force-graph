@@ -47,7 +47,8 @@ forcegraph:
   backgroundColor: '#111'   # 背景色
 
   # 自动注入（不改主题 layout 即可在指定页面显示图谱）
-  inject: true
+  inject: true                    # 侧栏 tag_force_graph 等是否启用（见 templates/tag_graph.ejs）
+  injectBody: true                # 是否注册 injector（页脚大图或右侧浮层）；设为 false 可只保留侧栏
   injectTo: ['tag', 'archive']   # 与主题 layout 名一致，如 tag/tags、archive/archives、default 等
   injectPosition: 'right'       # 可选。仅当 injectTo 为 tag+archive 时默认 right（右侧固定小图）
   injectRightHeight: '280px'     # 右侧图谱高度
@@ -77,7 +78,7 @@ forcegraph:
 ```
 
 **方式 C：自动注入**（不改 layout）  
-在 `_config.yml` 中已配置 `inject: true` 和 `injectTo: ['tag']`（或 `['tag','archive']`、`['default']` 等）时，插件会在对应 layout 的页面自动注入图谱，无需在模板中写 `forcegraph`。若出现「forcegraph 未定义」，可直接采用方式 C。
+在 `_config.yml` 中已配置 **`injectBody: true`**（未写时与 **`inject`** 相同）和 **`injectTo`**（如 `['tag']`、`['tag','archive']`、`['default']` 等）时，插件会在对应 layout 的页面通过 injector 注入图谱，无需在模板中写 `forcegraph`。若只要 Stellar 侧栏 **`tag_force_graph`**、不要页脚大图，可设 **`inject: true`** + **`injectBody: false`**。若出现「forcegraph 未定义」，可直接采用方式 C。
 
 参数：第 1 个为高度、第 2 个为背景色；不传则使用上面配置或默认值。
 

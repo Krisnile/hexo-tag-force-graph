@@ -75,6 +75,11 @@ function generateGraphData(hexo) {
 function getConfig(hexo) {
   const cfg = (hexo && hexo.config && hexo.config.forcegraph) || {};
   const inject = cfg.inject === true || cfg.inject === 'true';
+  /** 仅控制 Hexo injector（页脚大图 / 右侧浮层）；未写时与 inject 相同，兼容旧站 */
+  let injectBody;
+  if (cfg.injectBody === false || cfg.injectBody === 'false') injectBody = false;
+  else if (cfg.injectBody === true || cfg.injectBody === 'true') injectBody = true;
+  else injectBody = inject;
   let injectTo = cfg.injectTo != null ? cfg.injectTo : [];
   if (!Array.isArray(injectTo)) injectTo = injectTo ? [injectTo] : [];
   const injectToSet = new Set(injectTo.map((x) => String(x).trim().toLowerCase()));
@@ -89,6 +94,7 @@ function getConfig(hexo) {
     height: (cfg.height && String(cfg.height).trim()) || '500px',
     backgroundColor: (cfg.backgroundColor && String(cfg.backgroundColor).trim()) || (cfg.bgColor && String(cfg.bgColor).trim()) || '#111',
     inject,
+    injectBody,
     injectTo,
     injectPosition: injectPosition.toLowerCase() === 'right' ? 'right' : '',
     injectRightHeight: (cfg.injectRightHeight && String(cfg.injectRightHeight).trim()) || '280px',
@@ -303,7 +309,7 @@ function register(hexo) {
   // 否则 generateGraphData 会返回空数据，导致图谱不显示。
   if (hexo.extend.injector) {
     const cfg = getConfig(hexo);
-    if (cfg.inject && cfg.injectTo && cfg.injectTo.length > 0) {
+    if (cfg.injectBody && cfg.injectTo && cfg.injectTo.length > 0) {
       const doRegister = function () {
         const c = getConfig(hexo);
         const graphData = generateGraphData(hexo);
@@ -333,7 +339,7 @@ function register(hexo) {
             hexo.log.debug(`[forcegraph] 已为布局 "${layout}" 注册自动注入`);
           }
         });
-        hexo.log.info(`[forcegraph] 自动注入已启用，目标布局: ${cfg.injectTo.join(', ')}`);
+        hexo.log.info(`[forcegraph] 页脚/浮层自动注入已启用，目标布局: ${cfg.injectTo.join(', ')}`);
       });
     }
   } else {
